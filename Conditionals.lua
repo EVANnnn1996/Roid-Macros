@@ -291,6 +291,41 @@ function Roids.ValidateCombo(bigger, amount)
     return cp > tonumber(amount);
 end
 
+-- Validates swing timer percentage for SP_SwingTimer addon integration
+-- operator: Comparison operator (>, <, =, >=, <=, ~=)
+-- amount: Percentage of swing time elapsed (e.g., 20 means 20% of swing has elapsed)
+-- returns: True if percentElapsed [operator] amount
+function Roids.ValidateSwingTimer(bigger, amount)
+    if bigger == nil or amount == nil then return false end
+    
+    -- Check if SP_SwingTimer is loaded by checking for st_timer global
+    if st_timer == nil then
+        -- Only show error once per session
+        if not Roids._swingTimerErrorShown then
+            Roids.Print("[RoidMacros] The [swingtimer] conditional requires the SP_SwingTimer addon. Get it at: https://github.com/jrc13245/SP_SwingTimer")
+            Roids._swingTimerErrorShown = true
+        end
+        return false
+    end
+
+    -- Get player's attack speed (main hand)
+    local attackSpeed = UnitAttackSpeed("player")
+    if not attackSpeed or attackSpeed <= 0 then return false end
+
+    -- Calculate percentage of swing elapsed
+    -- st_timer counts down from attackSpeed to 0 (time remaining)
+    -- So: timeElapsed = attackSpeed - st_timer
+    local timeElapsed = attackSpeed - st_timer
+    local percentElapsed = (timeElapsed / attackSpeed) * 100
+
+    -- Compare percent elapsed against threshold
+    if bigger == 0 then
+        return percentElapsed < 50
+    end
+
+    return percentElapsed > 50
+end
+
 -- Checks whether or not the given unit has more or less power in percent than the given amount
 -- unit: The unit we're checking
 -- bigger: 1 if the percentage needs to be bigger, 0 if it needs to be lower
@@ -903,6 +938,10 @@ Roids.Keywords = {
         
     combo = function(conditionals)
         return And(conditionals.combo,function (v) return Roids.ValidateCombo(v.bigger, v.amount) end)
+    end,
+
+    swingtimer = function(conditionals)
+        return And(conditionals.swingtimer,function (v) return Roids.ValidateSwingTimer(v.bigger, v.amount) end)
     end,
 
     power = function(conditionals)
